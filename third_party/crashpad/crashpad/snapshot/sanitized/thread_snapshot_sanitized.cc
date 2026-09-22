@@ -23,7 +23,15 @@ ThreadSnapshotSanitized::ThreadSnapshotSanitized(const ThreadSnapshot* snapshot,
                                                  RangeSet* ranges)
     : ThreadSnapshot(),
       snapshot_(snapshot),
-      stack_(snapshot_->Stack(), ranges, snapshot_->Context()->Is64Bit()) {}
+      stack_(snapshot_->Stack(), ranges, snapshot_->Context()->Is64Bit()) {
+  // Linux snapshots may include memory referenced by saved registers. Apply
+  // the same redaction policy as the stack instead of assuming it is absent
+  // or exposing the raw pointed-to data in a sanitized report.
+  for (const auto* memory : snapshot_->ExtraMemory()) {
+    extra_memory_.push_back(std::make_unique<MemorySnapshotSanitized>(
+        memory, ranges, snapshot_->Context()->Is64Bit()));
+  }
+}
 
 ThreadSnapshotSanitized::~ThreadSnapshotSanitized() = default;
 
@@ -57,10 +65,12 @@ uint64_t ThreadSnapshotSanitized::ThreadSpecificDataAddress() const {
 
 std::vector<const MemorySnapshot*> ThreadSnapshotSanitized::ExtraMemory()
     const {
-  // TODO(jperaza): If/when ExtraMemory() is used, decide whether and how it
-  // should be sanitized.
-  DCHECK(snapshot_->ExtraMemory().empty());
-  return std::vector<const MemorySnapshot*>();
+  std::vector<const MemorySnapshot*> result;
+  result.reserve(extra_memory_.size());
+  for (const auto& memory : extra_memory_) {
+    result.push_back(memory.get());
+  }
+  return result;
 }
 
 }  // namespace internal

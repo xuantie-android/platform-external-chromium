@@ -2172,6 +2172,58 @@ TEST_F(CompositorFrameReportingControllerTest,
   EXPECT_EQ(3u, frame_sorter_.total_frames());
 }
 
+TEST_F(CompositorFrameReportingControllerTest,
+       SynchronousLateDrawAfterWaitingOnMain) {
+  using Stage = CompositorFrameReportingController::PipelineStage;
+  SimulateBeginMainFrame();
+  const auto main_id = current_id_;
+  reporting_controller_.OnFinishImplFrame(main_id, true);
+  reporting_controller_.DidNotProduceFrame(
+      main_id, FrameSkippedReason::kWaitingOnMain);
+  SimulateBeginImplFrame();
+  reporting_controller_.OnFinishImplFrame(current_id_, true);
+  reporting_controller_.DidNotProduceFrame(
+      current_id_, FrameSkippedReason::kWaitingOnMain);
+  ASSERT_TRUE(reporting_controller_.HasReporterAt(Stage::kBeginImplFrame));
+  EXPECT_EQ(current_id_,
+            reporting_controller_.ReportersForTesting()[Stage::kBeginImplFrame]
+                ->frame_id());
+  // Repeated no-draw notifications must not add the same dependent twice.
+  reporting_controller_.DidNotProduceFrame(
+      current_id_, FrameSkippedReason::kWaitingOnMain);
+  SimulateCommit(nullptr);
+  reporting_controller_.WillActivate();
+  reporting_controller_.DidActivate();
+  SubmitInfo submit(1u, AdvanceNowByMs(10));
+  submit.events_metrics.impl_event_metrics.push_back(
+      CreateEventMetrics(ui::EventType::kTouchPressed, std::nullopt));
+  submit.normalized_invalidated_area = 0.5f;
+  reporting_controller_.DidSubmitCompositorFrame(submit, current_id_, main_id);
+  EXPECT_FALSE(reporting_controller_.HasReporterAt(Stage::kBeginImplFrame));
+  viz::FrameTimingDetails details;
+  details.presentation_feedback.timestamp = AdvanceNowByMs(10);
+  reporting_controller_.DidPresentCompositorFrame(1u, details);
+}
+
+TEST_F(CompositorFrameReportingControllerTest,
+       WaitingImplReporterAdoptedWhenNextFrameReplacesIt) {
+  using Stage = CompositorFrameReportingController::PipelineStage;
+  SimulateBeginMainFrame();
+  reporting_controller_.OnFinishImplFrame(current_id_, true);
+  SimulateBeginImplFrame();
+  reporting_controller_.OnFinishImplFrame(current_id_, true);
+  reporting_controller_.DidNotProduceFrame(
+      current_id_, FrameSkippedReason::kWaitingOnMain);
+  ASSERT_TRUE(reporting_controller_.HasReporterAt(Stage::kBeginImplFrame));
+  EXPECT_EQ(0u, reporting_controller_.GetAdoptedReportersCount());
+  SimulateBeginImplFrame();
+  EXPECT_EQ(1u, reporting_controller_.GetAdoptedReportersCount());
+  EXPECT_EQ(current_id_,
+            reporting_controller_.ReportersForTesting()[Stage::kBeginImplFrame]
+                ->frame_id());
+  reporting_controller_.OnFinishImplFrame(current_id_, true);
+}
+
 TEST_F(CompositorFrameReportingControllerTest, MainFrameBeforeCommit) {
   viz::BeginFrameArgs args1 = SimulateBeginFrameArgs({1, 1});
   viz::BeginFrameArgs args2 = SimulateBeginFrameArgs({1, 2});
@@ -2229,6 +2281,28 @@ TEST_F(CompositorFrameReportingControllerTest, MainFrameBeforeCommit) {
       CompositorFrameReportingController::PipelineStage::kCommit));
   EXPECT_TRUE(reporting_controller_.HasReporterAt(
       CompositorFrameReportingController::PipelineStage::kActivate));
+}
+
+TEST_F(CompositorFrameReportingControllerTest,
+       WaitingImplCanStartIndependentMainFrame) {
+  using Stage = CompositorFrameReportingController::PipelineStage;
+  SimulateBeginMainFrame();
+  reporting_controller_.OnFinishImplFrame(current_id_, true);
+  SimulateBeginImplFrame();
+  reporting_controller_.OnFinishImplFrame(current_id_, true);
+  reporting_controller_.DidNotProduceFrame(
+      current_id_, FrameSkippedReason::kWaitingOnMain);
+  reporting_controller_.WillBeginMainFrame(args_);
+  auto& main = reporting_controller_.ReportersForTesting()[Stage::kBeginMainFrame];
+  ASSERT_TRUE(main);
+  EXPECT_FALSE(main->partial_update_decider());
+  SimulateBeginImplFrame();
+  reporting_controller_.OnFinishImplFrame(current_id_, true);
+  reporting_controller_.DidNotProduceFrame(
+      current_id_, FrameSkippedReason::kWaitingOnMain);
+  SimulateBeginImplFrame();
+  EXPECT_EQ(1u, reporting_controller_.GetAdoptedReportersCount());
+  reporting_controller_.OnFinishImplFrame(current_id_, true);
 }
 
 // Glossary of acronyms used in the tests below.

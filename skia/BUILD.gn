@@ -18,6 +18,10 @@ import("//third_party/skia/modules/pathops/pathops.gni")
 import("//third_party/skia/modules/skcms/skcms.gni")
 import("features.gni")
 
+if (is_android) {
+  import("//build/config/android/config.gni")
+}
+
 if (current_cpu == "arm") {
   import("//build/config/arm.gni")
 }
@@ -470,6 +474,10 @@ component("skia") {
     # Note that this requires expat.
     # Note that this requires skia_ports_fontmgr_android_parser_sources.
     sources += skia_ports_fontmgr_android_ndk_sources
+    if (android_ndk_api_level >= 31) {
+      # AndroidIcuAPI uses direct NDK ICU symbols at API31+, rather than dlopen.
+      libs = [ "icu" ]
+    }
   }
 
   if (is_fuchsia) {

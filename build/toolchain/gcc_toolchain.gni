@@ -1020,12 +1020,18 @@ template("clang_toolchain") {
 
     cc = "${prefix}/clang"
     cxx = "${prefix}/clang++"
+    # Defaults precede target/config flags. A runtime-dispatched ISA kernel
+    # must be able to override the baseline with its explicit -march.
+    if (defined(invoker.default_compiler_flags)) {
+      cc += " " + invoker.default_compiler_flags
+      cxx += " " + invoker.default_compiler_flags
+    }
     ld = cxx
     readelf = "${prefix}/llvm-readelf"
     ar = "${prefix}/llvm-ar"
     nm = "${prefix}/llvm-nm"
 
-    forward_variables_from(invoker, "*", [ "toolchain_args" ])
+    forward_variables_from(invoker, "*", [ "toolchain_args", "default_compiler_flags" ])
 
     toolchain_args = {
       if (defined(invoker.toolchain_args)) {

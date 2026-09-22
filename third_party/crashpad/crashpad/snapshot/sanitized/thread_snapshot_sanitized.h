@@ -17,7 +17,9 @@
 
 #include "snapshot/thread_snapshot.h"
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include "snapshot/sanitized/memory_snapshot_sanitized.h"
 #include "util/misc/range_set.h"
@@ -33,7 +35,8 @@ class ThreadSnapshotSanitized final : public ThreadSnapshot {
   //!
   //! \param[in] snapshot The ThreadSnapshot to sanitize.
   //! \param[in] ranges A set of address ranges with which to sanitize this
-  //!     thread's stacks. \see internal::MemorySnapshotSanitized.
+  //!     thread's stack and indirectly referenced memory.
+  //!     \see internal::MemorySnapshotSanitized.
   ThreadSnapshotSanitized(const ThreadSnapshot* snapshot, RangeSet* ranges);
 
   ThreadSnapshotSanitized(const ThreadSnapshotSanitized&) = delete;
@@ -55,6 +58,7 @@ class ThreadSnapshotSanitized final : public ThreadSnapshot {
  private:
   const ThreadSnapshot* snapshot_;
   MemorySnapshotSanitized stack_;
+  std::vector<std::unique_ptr<MemorySnapshotSanitized>> extra_memory_;
 };
 
 }  // namespace internal

@@ -150,7 +150,8 @@ struct kernel_stat {
   int st_blocks;
   int st_pad4[14];
 };
-#elif defined(__aarch64__)
+#elif defined(__aarch64__) || defined(ARCH_CPU_RISCV64)
+// Both 64-bit architectures use the asm-generic/stat.h kernel layout.
 struct kernel_stat {
   unsigned long st_dev;
   unsigned long st_ino;

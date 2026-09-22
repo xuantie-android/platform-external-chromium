@@ -229,9 +229,14 @@ bool OpenSLESOutputStream::CreatePlayer() {
   // object, we need to free the object and its resources.
   SLEngineOption option[] = {
       {SL_ENGINEOPTION_THREADSAFE, static_cast<SLuint32>(SL_BOOLEAN_TRUE)}};
+  // Retain the legacy fallback when building against platform headers which
+  // mark OpenSLES deprecated from API 30; AAudio remains the preferred path.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
   LOG_ON_FAILURE_AND_RETURN(
       slCreateEngine(engine_object_.Receive(), 1, option, 0, nullptr, nullptr),
       false);
+#pragma clang diagnostic pop
 
   // Realize the SL engine object in synchronous mode.
   LOG_ON_FAILURE_AND_RETURN(

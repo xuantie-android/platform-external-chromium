@@ -49,7 +49,7 @@
 #define MAX_PUBLIC_SYSCALL  (MIN_SYSCALL + __NR_64_Linux_syscalls)
 #define MAX_SYSCALL         MAX_PUBLIC_SYSCALL
 
-#elif defined(__aarch64__)
+#elif defined(__aarch64__) || defined(ARCH_CPU_RISCV64)
 
 #include <asm-generic/unistd.h>
 #define MIN_SYSCALL 0u

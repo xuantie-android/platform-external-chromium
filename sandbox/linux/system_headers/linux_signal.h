@@ -13,7 +13,7 @@
 // (not undefined, but defined different values and in different memory
 // layouts). So, fill the gap here.
 #if defined(__i386__) || defined(__x86_64__) || defined(__arm__) || \
-    defined(__aarch64__)
+    defined(__aarch64__) || defined(ARCH_CPU_RISCV64)
 
 #define LINUX_SIGHUP 1
 #define LINUX_SIGINT 2
@@ -113,6 +113,14 @@ typedef uint64_t LinuxSigSet;
 struct LinuxSigAction {
   unsigned int sa_flags;
   void (*kernel_handler)(int);
+  LinuxSigSet sa_mask;
+};
+#elif defined(ARCH_CPU_RISCV64)
+// RISC-V uses asm-generic/signal.h without SA_RESTORER. Kernel flags are
+// unsigned long, unlike the public Bionic sigaction structure.
+struct LinuxSigAction {
+  void (*kernel_handler)(int);
+  unsigned long sa_flags;
   LinuxSigSet sa_mask;
 };
 #else

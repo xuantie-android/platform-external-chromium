@@ -15,6 +15,15 @@
 import("../build/crashpad_buildconfig.gni")
 import("../build/crashpad_fuzzer_test.gni")
 
+executable("lpi4a_crashpad_sanitize_smoke") {
+  testonly = true
+  sources = [ "sanitized/lpi4a_crashpad_sanitize_smoke.cc" ]
+  deps = [
+    ":test_support",
+    "$mini_chromium_source_parent:base",
+  ]
+}
+
 if (crashpad_is_in_chromium) {
   import("//build/config/compiler/compiler.gni")
 }

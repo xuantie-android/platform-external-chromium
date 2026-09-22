@@ -138,7 +138,8 @@ template("chrome_bundle") {
         parent_module_target = ":${_bundle_target_name}__chrome_bundle_module"
       }
 
-      if (android_64bit_target_cpu) {
+      # RISC-V Android is 64-bit-only and has no 32-bit version-code variant.
+      if (android_64bit_target_cpu && defined(chrome_32_version_code)) {
         _version_code_offset = chrome_32_version_code
       } else {
         _version_code_offset = chrome_version_code

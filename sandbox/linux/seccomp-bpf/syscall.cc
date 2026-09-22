@@ -19,7 +19,7 @@ namespace sandbox {
 namespace {
 
 #if defined(ARCH_CPU_X86_FAMILY) || defined(ARCH_CPU_ARM_FAMILY) || \
-    defined(ARCH_CPU_MIPS_FAMILY)
+    defined(ARCH_CPU_MIPS_FAMILY) || defined(ARCH_CPU_RISCV64)
 // Number that's not currently used by any Linux kernel ABIs.
 const int kInvalidSyscallNumber = 0x351d3;
 #else
@@ -309,10 +309,31 @@ asm(// We need to be able to tell the kernel exactly where we made a
     "2:ret\n"
     ".cfi_endproc\n"
     ".size SyscallAsm, .-SyscallAsm\n"
+#elif defined(ARCH_CPU_RISCV64)
+    // Based on Chromium review 4935120; use the six Linux/seccomp arguments.
+    ".text\n"
+    ".align 2\n"
+    ".type SyscallAsm, @function\n"
+    "SyscallAsm:\n"
+    ".cfi_startproc\n"
+    "bgez a0, 1f\n"
+    "lla a0, 2f\n"
+    "j 2f\n"
+    "1:mv a7, a0\n"
+    "ld a0, 0(a1)\n"
+    "ld a2, 16(a1)\n"
+    "ld a3, 24(a1)\n"
+    "ld a4, 32(a1)\n"
+    "ld a5, 40(a1)\n"
+    "ld a1, 8(a1)\n"
+    "ecall\n"
+    "2:ret\n"
+    ".cfi_endproc\n"
+    ".size SyscallAsm, .-SyscallAsm\n"
 #endif
     );  // asm
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(ARCH_CPU_RISCV64)
 extern "C" {
 intptr_t SyscallAsm(intptr_t nr, const intptr_t args[6]);
 }
@@ -371,7 +392,7 @@ intptr_t Syscall::Call(int nr,
       : "=a"(ret)
       : "0"(ret), "D"(args)
       : "cc", "esp", "memory", "ecx", "edx");
-#elif defined(__x86_64__)
+#elif defined(__x86_64__) || defined(ARCH_CPU_RISCV64)
   intptr_t ret = SyscallAsm(nr, args);
 #elif defined(__arm__)
   intptr_t ret;

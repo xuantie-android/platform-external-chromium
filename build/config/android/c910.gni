@@ -1,0 +1,12 @@
+declare_args() {
+  android_riscv_c910 = false
+  # Only for the archived toolchain with XTheadVector/RVV0.7 lowering.
+  android_riscv_c910_vector = false
+}
+
+c910_arch = "-march=rv64imafdc_zicsr_zifencei_xtheadba_xtheadbb_xtheadbs_xtheadcondmov_xtheadfmemidx_xtheadmemidx_xtheadmempair"
+c910_rust_features = "-v,-zve32f,-zve32x,-zve64d,-zve64f,-zve64x,-zvl32b,-zvl64b,-zvl128b,-zba,-zbb,-zbs,+xtheadba,+xtheadbb,+xtheadbs,+xtheadcondmov,+xtheadfmemidx,+xtheadmemidx,+xtheadmempair"
+if (android_riscv_c910_vector) {
+  c910_arch += "_zve32x_xtheadvector"
+  c910_rust_features += ",+xtheadvector"
+}

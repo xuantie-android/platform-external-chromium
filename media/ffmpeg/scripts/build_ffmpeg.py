@@ -41,7 +41,7 @@ BRANDINGS = [
 ]
 
 ARCH_MAP = {
-    'android': ['ia32', 'x64', 'arm-neon', 'arm64'],
+    'android': ['ia32', 'x64', 'arm-neon', 'arm64', 'riscv64'],
     'linux': ['ia32', 'x64', 'noasm-x64', 'arm-neon', 'arm64', 'riscv64'],
     'mac': ['x64', 'arm64'],
     'win': ['ia32', 'x64', 'arm64'],
@@ -229,6 +229,9 @@ def SetupAndroidToolchain(target_arch):
     elif target_arch == 'x64':
         toolchain_level = api64_level
         toolchain_bin_prefix = 'x86_64-linux-android'
+    elif target_arch == 'riscv64':
+        toolchain_level = str(max(36, int(api64_level)))
+        toolchain_bin_prefix = 'riscv64-linux-android'
     elif target_arch == 'mipsel':  # Unsupported beginning in M90
         toolchain_bin_prefix = 'mipsel-linux-android'
     elif target_arch == 'mips64el':  # Unsupported beginning in M90
@@ -236,6 +239,8 @@ def SetupAndroidToolchain(target_arch):
         toolchain_bin_prefix = 'mips64el-linux-android'
 
     clang_toolchain_dir = NDK_ROOT_DIR + '/toolchains/llvm/prebuilt/linux-x86_64/'
+    android_sysroot = os.environ.get('ANDROID_SYSROOT',
+                                    clang_toolchain_dir + 'sysroot')
 
     # Big old nasty hack here, beware! The new android ndk has some foolery with
     # libgcc.a -- clang still uses gcc for its linker when cross compiling.
@@ -261,9 +266,9 @@ def SetupAndroidToolchain(target_arch):
         '--cxx=clang++',
         '--ld=clang',
         '--enable-cross-compile',
-        '--sysroot=' + clang_toolchain_dir + 'sysroot',
-        '--extra-cflags=-I' + clang_toolchain_dir + 'sysroot/usr/include',
-        '--extra-cflags=-I' + clang_toolchain_dir + 'sysroot/usr/include/' +
+        '--sysroot=' + android_sysroot,
+        '--extra-cflags=-I' + android_sysroot + '/usr/include',
+        '--extra-cflags=-I' + android_sysroot + '/usr/include/' +
         toolchain_bin_prefix,
         '--extra-cflags=--target=' + toolchain_bin_prefix + toolchain_level,
         '--extra-ldflags=--target=' + toolchain_bin_prefix + toolchain_level,

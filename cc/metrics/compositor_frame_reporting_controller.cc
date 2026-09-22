@@ -143,6 +143,12 @@ void CompositorFrameReportingController::WillBeginImplFrame(
     if (reporter->did_not_produce_frame()) {
       reporter->TerminateFrame(FrameTerminationStatus::kDidNotProduceFrame,
                                reporter->did_not_produce_frame_time());
+      // A synchronous compositor can draw after DidNotProduceFrame(). Keep
+      // its current reporter submit-capable until this next BeginFrame
+      // replaces it, then transfer ownership to the pending main update.
+      if (auto* decider = reporter->partial_update_decider()) {
+        decider->AdoptReporter(std::move(reporter));
+      }
     } else {
       reporter->TerminateFrame(FrameTerminationStatus::kReplacedByNewReporter,
                                Now());
@@ -172,6 +178,19 @@ void CompositorFrameReportingController::WillBeginImplFrame(
 
 void CompositorFrameReportingController::WillBeginMainFrame(
     const viz::BeginFrameArgs& args) {
+  // A provisional no-draw impl reporter may depend on an older main update.
+  // If this BeginFrame now starts its own main update, finish the impl-only
+  // reporter before creating the independent main reporter below. Otherwise
+  // the new main reporter would itself remain a partial-update dependent and
+  // could not own further dependent frames.
+  auto& pending_impl = reporters_[PipelineStage::kBeginImplFrame];
+  if (pending_impl && pending_impl->did_not_produce_frame()) {
+    if (auto* decider = pending_impl->partial_update_decider()) {
+      pending_impl->TerminateFrame(FrameTerminationStatus::kDidNotProduceFrame,
+                                   pending_impl->did_not_produce_frame_time());
+      decider->AdoptReporter(std::move(pending_impl));
+    }
+  }
   if (reporters_[PipelineStage::kBeginImplFrame]) {
     // We need to use .get() below because operator<< in std::unique_ptr is a
     // C++20 feature.
@@ -347,7 +366,7 @@ void CompositorFrameReportingController::DidSubmitCompositorFrame(
     impl_reporter = std::move(reporters_[PipelineStage::kActivate]);
     CompositorFrameReporter* partial_update_decider =
         GetOutstandingUpdatesFromMain(current_frame_id);
-    if (partial_update_decider)
+    if (partial_update_decider && !impl_reporter->partial_update_decider())
       impl_reporter->SetPartialUpdateDecider(partial_update_decider);
   } else if (CanSubmitMainFrame(current_frame_id)) {
     auto& reporter = reporters_[PipelineStage::kBeginMainFrame];
@@ -518,7 +537,17 @@ void CompositorFrameReportingController::
     CompositorFrameReporter* partial_update_decider =
         GetOutstandingUpdatesFromMain(stage_reporter->frame_id());
     if (partial_update_decider) {
-      stage_reporter->SetPartialUpdateDecider(partial_update_decider);
+      if (!stage_reporter->partial_update_decider()) {
+        stage_reporter->SetPartialUpdateDecider(partial_update_decider);
+      }
+      // DidNotProduceFrame is provisional for the synchronous compositor:
+      // DemandDraw may still submit this BeginFrame after a main-frame
+      // activation. Do not terminate or remove the only current-frame
+      // reporter here. WillBeginImplFrame adopts it if it was never drawn.
+      if (stage_reporter.get() ==
+          reporters_[PipelineStage::kBeginImplFrame].get()) {
+        return;
+      }
       stage_reporter->OnDidNotProduceFrame(FrameSkippedReason::kWaitingOnMain);
       stage_reporter->TerminateFrame(
           FrameTerminationStatus::kDidNotProduceFrame, Now());

@@ -9,6 +9,37 @@ import("//ui/gl/features.gni")
 
 import("//cc/cc.gni")
 
+executable("lpi4a_frame_reporter_smoke") {
+  testonly = true
+  sources = [ "metrics/lpi4a_frame_reporter_smoke.cc" ]
+  deps = [
+    ":cc",
+    "//base",
+    "//components/viz/common",
+    "//ui/events:events_base",
+  ]
+}
+
+cc_test("lpi4a_frame_reporting_unittests") {
+  sources = [
+    "metrics/compositor_frame_reporting_controller_unittest.cc",
+    "metrics/lpi4a_frame_reporting_test_main.cc",
+  ]
+  deps = [
+    ":cc",
+    "//base/test:test_support",
+    "//cc/base",
+    "//components/viz/common",
+    "//mojo/core/embedder",
+    "//testing/gmock",
+    "//testing/gtest",
+    "//ui/events:events_base",
+  ]
+  if (is_android) {
+    deps += [ "//third_party/icu:icu_assets" ]
+  }
+}
+
 if (is_android) {
   import("//build/config/android/rules.gni")
 }

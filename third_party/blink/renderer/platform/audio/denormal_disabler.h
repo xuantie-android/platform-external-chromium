@@ -171,12 +171,14 @@ class DenormalEnabler final : public DenormalModifier {
 // FIXME: add implementations for other architectures and compilers
 class DenormalModifier final {
  public:
-  virtual ~DenormalModifier() = default;
+  ~DenormalModifier() = default;
   static void DisableDenormals() {}
   static void EnableDenormals() {}
 };
 
-class DenormalDisabler final {
+// These scope guards intentionally do no hardware work on fallback targets.
+// Callers keep the same RAII declarations as on x86/ARM without reading them.
+class [[maybe_unused]] DenormalDisabler final {
   STACK_ALLOCATED();
 
  public:
@@ -190,7 +192,7 @@ class DenormalDisabler final {
   }
 };
 
-class DenormalEnabler final {
+class [[maybe_unused]] DenormalEnabler final {
   STACK_ALLOCATED();
 
  public:

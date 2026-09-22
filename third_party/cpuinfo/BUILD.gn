@@ -203,7 +203,7 @@ source_set("cpu_and_os_specific") {
     ]
   }
 
-  if ((is_linux || is_chromeos) && current_cpu == "riscv64") {
+  if ((is_linux || is_chromeos || is_android) && current_cpu == "riscv64") {
     sources = [
       "src/src/riscv/linux/init.c",
       "src/src/riscv/linux/riscv-hw.c",

@@ -199,9 +199,14 @@ bool OpenSLESInputStream::CreateRecorder() {
   // object, we need to free the object and its resources.
   SLEngineOption option[] = {
       {SL_ENGINEOPTION_THREADSAFE, static_cast<SLuint32>(SL_BOOLEAN_TRUE)}};
+  // This legacy fallback intentionally calls Chromium's OpenSLES wrapper.
+  // Platform headers mark its underlying API deprecated from API 30.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
   LOG_ON_FAILURE_AND_RETURN(
       slCreateEngine(engine_object_.Receive(), 1, option, 0, nullptr, nullptr),
       false);
+#pragma clang diagnostic pop
 
   // Realize the SL engine object in synchronous mode.
   LOG_ON_FAILURE_AND_RETURN(

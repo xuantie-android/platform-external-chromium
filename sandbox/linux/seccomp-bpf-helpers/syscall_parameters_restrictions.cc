@@ -483,8 +483,10 @@ ResultExpr RestrictPtrace() {
 #endif
   return Switch(request)
       .Cases({
-#if !defined(__aarch64__)
+#if !defined(__aarch64__) && !defined(ARCH_CPU_RISCV64)
                  PTRACE_GETREGS, PTRACE_GETFPREGS, PTRACE_GET_THREAD_AREA,
+#endif
+#if !defined(__aarch64__)
                  PTRACE_GETREGSET,
 #endif
 #if defined(__arm__)
@@ -529,7 +531,7 @@ SANDBOX_EXPORT bpf_dsl::ResultExpr RestrictSockSendFlags(int sysno) {
       break;
 #endif
 #if defined(__i386__) || defined(__x86_64__) || defined(__arm__) || \
-    defined(__mips__) || defined(__aarch64__)
+    defined(__mips__) || defined(__aarch64__) || defined(ARCH_CPU_RISCV64)
     case __NR_sendto:  // Could specify destination.
       argIndex = 3;
       break;

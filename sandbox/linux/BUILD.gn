@@ -5,6 +5,18 @@
 import("//sandbox/features.gni")
 import("//testing/test.gni")
 
+if (is_android && current_cpu == "riscv64") {
+  executable("lpi4a_seccomp_smoke") {
+    testonly = true
+    sources = [ "lpi4a_seccomp_smoke.cc" ]
+    deps = [
+      ":seccomp_bpf",
+      "//base",
+      "//third_party/cpuinfo",
+    ]
+  }
+}
+
 if (is_android) {
   import("//build/config/android/rules.gni")
 }
